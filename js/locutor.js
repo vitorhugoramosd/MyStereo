@@ -273,9 +273,9 @@ const Locutor = (() => {
   async function falar(preparada, sinal) {
     const pararFundo = Config.valores.fundoMusical ? Som.iniciarFundo() : () => {};
     try {
-      await Som.esperar(500, sinal);   // o fundo entra um instante antes da voz
+      await Som.transicao(sinal);   // chiado de sintonia e sino antes da voz
       if (preparada.audio) {
-        try { await Som.tocarBlob(preparada.audio, sinal); }
+        try { await Som.tocarBlob(preparada.audio, sinal, 1, 0.12); }
         catch (e) { console.warn('Áudio da fala não tocou; usando a voz do navegador.', e); await falarComNavegador(preparada.texto, sinal, preparada.idioma); }
       } else {
         await falarComNavegador(preparada.texto, sinal, preparada.idioma);
