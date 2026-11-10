@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rádio Pessoal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topo">
+    <div>
+      <h1 id="tituloRadio">Rádio Pessoal</h1>
+      <p id="subtitulo" class="suave">Desligada</p>
+    </div>
+    <div id="luzNoAr" class="no-ar">NO AR</div>
+  </header>
+
+  <main>
+    <!-- Aviso de primeira configuração / login -->
+    <section id="cartaoLogin" class="cartao">
+      <h2>Conectar ao Spotify</h2>
+      <p class="suave">
+        Cole o <b>Client ID</b> do seu app no
+        <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer Dashboard</a>.
+        No app, cadastre o Redirect URI <code>http://127.0.0.1:5500/</code> e marque <b>Web Playback SDK</b> e <b>Web API</b>.
+        O passo a passo está no LEIA-ME.
+      </p>
+      <div class="linha">
+        <input type="text" data-cfg="clientId" placeholder="Client ID do Spotify" autocomplete="off">
+        <button id="btnLogin" class="primario">Entrar com Spotify</button>
+      </div>
+    </section>
+
+    <!-- Tocando agora -->
+    <section class="cartao tocando">
+      <img id="capa" class="capa" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+      <div class="info">
+        <div id="etapa" class="etiqueta">Parada</div>
+        <div id="faixaNome" class="faixa-nome">Nada tocando</div>
+        <div id="faixaArtista" class="suave">Ligue a rádio para começar</div>
+        <div class="barra"><div id="barraProgresso"></div></div>
+        <div class="tempos suave"><span id="tempoAtual">0:00</span><span id="tempoTotal">0:00</span></div>
+        <div class="linha controles">
+          <button id="btnLigar" class="primario" disabled>Ligar a rádio</button>
+          <button id="btnPular" disabled>Pular</button>
+          <button id="btnDesligar" disabled>Desligar</button>
+          <label class="volume suave">Volume
+            <input type="range" min="0" max="1" step="0.05" data-cfg="volume">
+          </label>
+        </div>
+        <div id="status" class="status suave"></div>
+      </div>
+    </section>
+
+    <section class="cartao">
+      <h2>Última fala do locutor</h2>
+      <p id="ultimaFala" class="fala">—</p>
+    </section>
+
+    <div class="duas-colunas">
+      <section class="cartao">
+        <h2>Próximas músicas</h2>
+        <ol id="listaProximas" class="lista"></ol>
+      </section>
+      <section class="cartao">
+        <h2>Histórico de hoje</h2>
+        <ul id="listaHistorico" class="lista"></ul>
+      </section>
+    </div>
+
+    <!-- Configurações -->
+    <details class="cartao" id="painelConfig">
+      <summary><h2>Configurações</h2></summary>
+
+      <h3>Rádio</h3>
+      <div class="grade">
+        <label>Nome da rádio <input type="text" data-cfg="nomeRadio"></label>
+        <label>Fonte das músicas <select data-cfg="fonte" class="selFonte"></select></label>
+        <label>Vinheta a cada N músicas (0 = nunca) <input type="number" min="0" max="50" data-cfg="vinhetaACada"></label>
+        <label>Locutor a cada N músicas (0 = nunca) <input type="number" min="0" max="50" data-cfg="falaACada"></label>
+      </div>
+      <label class="marca"><input type="checkbox" data-cfg="fundoMusical"> Fundo musical por baixo da voz do locutor</label>
+
+      <h3>Programas por horário</h3>
+      <label class="marca"><input type="checkbox" data-cfg="usarProgramas"> Trocar a fonte das músicas conforme a hora do dia</label>
+      <div id="programas" class="programas"></div>
+
+      <h3>Locutor</h3>
+      <div class="grade">
+        <label>Estilo da locução
+          <select data-cfg="locucaoEstilo">
+            <option value="fm">FM brasileira (português)</option>
+            <option value="ingles">Rádio etérea da madrugada (inglês)</option>
+            <option value="misto">Misto: português com interlúdios em inglês</option>
+          </select>
+        </label>
+        <label>Nome do locutor <input type="text" data-cfg="locutorNome"></label>
+        <label>Estilo / personalidade <input type="text" data-cfg="locutorEstilo"></label>
+        <label>Gírias e bordões (opcional) <input type="text" data-cfg="locutorGirias" placeholder="ex.: bora, simbora, tá ligado"></label>
+        <label>Chave da API do Claude (opcional) <input type="password" data-cfg="claudeKey" autocomplete="off" placeholder="sk-ant-..."></label>
+        <label>Modelo do Claude <input type="text" data-cfg="claudeModelo"></label>
+      </div>
+      <p class="suave pequeno">Sem chave do Claude, o locutor usa frases prontas.</p>
+
+      <h3>Voz</h3>
+      <div class="grade">
+        <label>Tipo de voz
+          <select data-cfg="vozTipo">
+            <option value="navegador">Voz do navegador (grátis)</option>
+            <option value="openai">OpenAI TTS</option>
+          </select>
+        </label>
+        <label>Voz do navegador <select data-cfg="vozNavegador" id="selVozNavegador"></select></label>
+        <label>Chave da OpenAI (opcional) <input type="password" data-cfg="openaiKey" autocomplete="off" placeholder="sk-..."></label>
+        <label>Voz da OpenAI
+          <select data-cfg="openaiVoz">
+            <option>ash</option><option>alloy</option><option>ballad</option><option>coral</option>
+            <option>echo</option><option>fable</option><option>nova</option><option>onyx</option>
+            <option>sage</option><option>shimmer</option><option>verse</option>
+          </select>
+        </label>
+      </div>
+      <div class="linha">
+        <button id="btnTestarFala">Testar locutor</button>
+        <button id="btnTestarVinheta">Testar vinheta</button>
+      </div>
+
+      <h3>Vinhetas próprias (MP3)</h3>
+      <p class="suave pequeno">Se houver arquivos aqui, a rádio sorteia um deles; senão, usa a vinheta sintetizada. Ficam guardados neste navegador.</p>
+      <input type="file" id="arquivoVinheta" accept="audio/*" multiple>
+      <ul id="listaVinhetas" class="lista"></ul>
+
+      <h3>Conta</h3>
+      <div class="linha">
+        <span id="contaInfo" class="suave">Não conectado</span>
+        <button id="btnSair">Sair do Spotify</button>
+      </div>
+    </details>
+  </main>
+
+  <!-- A ordem importa: cada arquivo usa os anteriores. -->
+  <script src="js/config.js"></script>
+  <script src="js/banco.js"></script>
+  <script src="js/spotify.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/locutor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
