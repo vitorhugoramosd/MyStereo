@@ -136,51 +136,76 @@ const Locutor = (() => {
 
   // ---------- Voz ----------
 
-  function listarVozes() {
-    return speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('pt'));
+  // Vozes instaladas no navegador para um idioma ('pt' ou 'en').
+  function listarVozes(idioma = 'pt') {
+    return speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith(idioma));
   }
 
-  // Preferência: a voz escolhida > vozes neurais do Edge ("Natural") > Google > qualquer pt-BR.
+  // Devolve a primeira voz que passar em algum dos testes, na ordem de preferência.
+  function primeiraQueAtende(vozes, testes) {
+    for (const teste of testes) {
+      const achada = vozes.find(teste);
+      if (achada) return achada;
+    }
+    return vozes[0] || null;
+  }
+
+  // Preferência: a voz escolhida nas Configurações > vozes neurais do Edge ("Natural",
+  // as mais humanas) > vozes online do Google (Chrome) > qualquer outra do idioma.
+  // As vozes "Microsoft Fulano - idioma" sem "Natural" são as mais robóticas; ficam por último.
   function escolherVoz(idioma) {
     if (idioma === 'en') {
-      const ingles = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('en'));
-      return ingles.find(v => v.name.includes('Natural') && v.lang === 'en-US')
-        || ingles.find(v => v.name.includes('Natural'))
-        || ingles.find(v => v.lang === 'en-US')
-        || ingles[0] || null;
+      return primeiraQueAtende(listarVozes('en'), [
+        v => v.name === Config.valores.vozIngles,
+        v => v.name.includes('Natural') && /Andrew|Brian|Guy|Christopher|Eric/.test(v.name),
+        v => v.name.includes('Natural'),
+        v => v.name === 'Google UK English Male',
+        v => v.name.includes('Google'),
+        v => v.lang === 'en-US',
+      ]);
     }
-    const vozes = listarVozes();
-    return vozes.find(v => v.name === Config.valores.vozNavegador)
-      || vozes.find(v => v.lang === 'pt-BR' && v.name.includes('Natural'))
-      || vozes.find(v => v.lang === 'pt-BR' && v.name.includes('Google'))
-      || vozes.find(v => v.lang === 'pt-BR')
-      || vozes[0] || null;
+    return primeiraQueAtende(listarVozes('pt'), [
+      v => v.name === Config.valores.vozNavegador,
+      v => v.lang === 'pt-BR' && v.name.includes('Natural'),
+      v => v.lang === 'pt-BR' && v.name.includes('Google'),
+      v => v.lang === 'pt-BR',
+    ]);
   }
 
-  let falaAtual = null;   // manter a referência evita um bug do Chrome que corta a fala no meio
+  let falaAtual = null;   // manter a referência evita um bug do Chrome que descarta a fala no meio
 
-  function falarComNavegador(texto, sinal, idioma = 'pt') {
+  // Fala um trecho curto e termina quando o navegador avisa (ou quando estoura o tempo limite).
+  function falarTrecho(trecho, sinal, idioma, voz) {
     return new Promise(resolver => {
       if (sinal.aborted) return resolver();
-      const fala = new SpeechSynthesisUtterance(texto);
+      const fala = new SpeechSynthesisUtterance(trecho);
       const ingles = idioma === 'en';
-      fala.lang = ingles ? 'en-US' : 'pt-BR';
-      const voz = escolherVoz(idioma);
+      fala.lang = voz ? voz.lang : (ingles ? 'en-US' : 'pt-BR');
       if (voz) fala.voice = voz;
-      fala.rate = ingles ? 0.9 : 1.05;     // em inglês: mais devagar e mais grave, para o clima sereno
-      fala.pitch = ingles ? 0.85 : 1;
+      fala.rate = ingles ? 0.92 : 1.05;   // em inglês um pouco mais devagar, para o clima sereno
       falaAtual = fala;
 
       // Garantia: se o navegador nunca avisar que terminou, seguimos em frente mesmo assim.
-      const limite = setTimeout(terminar, 8000 + texto.length * 110);
+      const limite = setTimeout(terminar, 6000 + trecho.length * 120);
       function terminar() { clearTimeout(limite); resolver(); }
 
       fala.onend = terminar;
       fala.onerror = terminar;
       sinal.addEventListener('abort', () => { speechSynthesis.cancel(); terminar(); }, { once: true });
-      speechSynthesis.cancel();   // limpa qualquer fala presa na fila
       speechSynthesis.speak(fala);
     });
+  }
+
+  // Fala o texto frase por frase. As vozes online do Chrome cortam falas com
+  // mais de ~15 segundos; em pedaços curtos isso não acontece.
+  async function falarComNavegador(texto, sinal, idioma = 'pt') {
+    const voz = escolherVoz(idioma);
+    const frases = texto.match(/[^.!?]+[.!?]*\s*/g) || [texto];
+    speechSynthesis.cancel();   // limpa qualquer fala presa na fila
+    for (const frase of frases) {
+      if (sinal.aborted) return;
+      if (frase.trim()) await falarTrecho(frase.trim(), sinal, idioma, voz);
+    }
   }
 
   // Gera o MP3 da fala na OpenAI. Falas iguais (ex.: nome da rádio) vêm do cache no IndexedDB.

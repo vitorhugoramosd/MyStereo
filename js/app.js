@@ -354,10 +354,13 @@
   }
 
   function montarVozes() {
-    const select = $('selVozNavegador');
-    const vozes = Locutor.listarVozes();
-    select.replaceChildren(opcao('', 'Automática (melhor disponível)'), ...vozes.map(v => opcao(v.name, `${v.name} (${v.lang})`)));
-    select.value = cfg.vozNavegador;
+    const preencher = (id, idioma, chave) => {
+      const vozes = Locutor.listarVozes(idioma);
+      $(id).replaceChildren(opcao('', 'Automática (melhor disponível)'), ...vozes.map(v => opcao(v.name, `${v.name} (${v.lang})`)));
+      $(id).value = cfg[chave];
+    };
+    preencher('selVozNavegador', 'pt', 'vozNavegador');
+    preencher('selVozIngles', 'en', 'vozIngles');
   }
 
   async function mostrarVinhetas() {

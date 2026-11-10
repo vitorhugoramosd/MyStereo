@@ -33,6 +33,7 @@ const Config = (() => {
 
     vozTipo: 'navegador',       // 'navegador' ou 'openai'
     vozNavegador: '',
+    vozIngles: '',
     openaiKey: '',
     openaiVoz: 'ash',
   };
